@@ -1,5 +1,6 @@
 s.options.memSize_(8192 * 20);
 s.reboot;
+(
 ~createBuses = {
 	~longIn = ~longIn ? Bus.audio;
 	~mediumIn = ~mediumIn ? Bus.audio;
@@ -7,8 +8,11 @@ s.reboot;
 	~beatBoxIn = ~beatBoxIn ? Bus.audio;
 	~shortCombIn = ~shortCombIn ? Bus.audio;
 	~longCombIn = ~longCombIn ? Bus.audio;
+	~emptyIn = ~emptyIn ? Bus.audio;
 	~buffers = ~buffers ? ();
 	~buffers.waterPour = ~buffers.waterPour ? Buffer.read(s, "./water-pour.wav".resolveRelative);
+	~buffers.narration1 = ~buffers.narration1 ? Buffer.read(s, "./facing-the-current.wav".resolveRelative);
+	~buffers.narration2 = ~buffers.narration2 ? Buffer.read(s, "./one-star.wav".resolveRelative);
 	"Created Buses and Loaded Buffers".postln;
 };
 ~createSynthDefs = {
@@ -40,15 +44,24 @@ s.reboot;
 		Out.ar(out, sig);
 
 	}).add;
-	SynthDef(\comb, { | out = 0, in, freq = 60, decayTime=10 |
+	SynthDef(\tomFlat, { | out = 0, in, pan, freq = 100, freqSpread = 15000, decayTime = 0.4, gate=1, amp=1 |
+		var input = In.ar(in);
+		var env = EnvGen.kr(Env.asr(0.0, 1, 0.1), gate, doneAction: 2);
+		var sig = Ringz.ar(input, freq + (Rand(0, 1 ! 70) * freqSpread), decayTime).mean * env;
+		//sig = sig + input;
+		sig = Pan2.ar(sig, pan, amp);
+		Out.ar(out, sig);
+
+	}).add;
+	SynthDef(\comb, { | out = 0, in, freq = 60, decayTime=10, amp = 0 |
 		var input = In.ar(in);
 		var sig = Splay.ar(CombC.ar(input, 0.2, 10.collect { | i | 1/(freq * i +1) }, decayTime));
 		Out.ar(out, sig * amp);
 	}).add;
-	SynthDef(\water, { | out=0, pitchRatio=1.0, amp=0.2, bufnum, freqModRate=1, gate=1 |
+	SynthDef(\water, { | out=0, pitchRatio=1.0, amp=0.2, bufnum, freqModRate=1, gate=1, cutoff = 2000 |
 		var env = EnvGen.kr(Env.asr, gate, doneAction: 2);
 		var sig = Splay.ar(PlayBuf.ar(1, bufnum, BufRateScale.ir(bufnum) * Rand(0.2, 2 ! 10), 1, loop: 1));
-		sig = LPF.ar(sig, Line.ar(15000, 1000, 5)) * amp;
+		sig = LPF.ar(sig, Line.ar(15000, cutoff, 5)) * amp;
 		sig = sig * env;
 		Out.ar(out, sig);
 	}).add;
@@ -85,21 +98,102 @@ s.reboot;
 		\decayTime, 1,
 		\amp, 0.5], addAction: \addToTail);
 	Synth(\tom, [\in, ~beatBoxIn, \pan, -1, \amp, 0.5], addAction: \addToTail);
-	Synth(\tom, [\in, ~beatBoxIn, \pan, 1, \freq, 500, \amp, 0.5], addAction: \addToTail)
+	Synth(\tom, [\in, ~beatBoxIn, \pan, 1, \freq, 500, \amp, 0.5], addAction: \addToTail);
+	"Created Effects".postln;
 };
-~seq = [
-	{ ~input.set(\out, ~longIn); },
-	{ ~input.set(\out, ~longCombIn); },
-	{ ~input.set(\out, ~shortCombIn); },
-	{ ~input.set(\out, ~mediumIn); },
-	{ ~input.set(\out, ~beatBoxIn); },
-	{ ~waterDry = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.5, \out, 0]); },
-	{ ~waterDrum = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.1, \out, ~beatBoxIn]); },
-	{ ~waterComb = Synth(\water, [\bufmum, ~buffers.waterPour, \amp, 0.1, \out, ~shortCombIn]); },
-	{ ~input.set(\out, ~shortIn) },
-	{ ~input.set(\out, 0) }
-];
+~createSeq = {
+	~seq = [
+		{
+			~buffers.narration1.play;
+			~input.set(\out, ~longIn);
+			"1. Start on high quiet s. Wait for narration to finish.
+2. ss-> sh -> w.
+3. Long tones on ss, sh, w, h, f.
+Gradually add flute notes."
+		},
+		{
+			~input.set(\out, ~mediumIn);
+			"Melody. Switch to next cue before long tones end"
+		},
+		{
+			~input.set(\out, ~beatBoxIn);
+			"Nonpitched, erratic consonants or instrument sounds."
+		},
+		{
+			~buffers.narration2.play;
+			~input.set(\out, ~longCombIn);
+			"1. Sigh some through your instrument, onobtrusively while the narration plays.
+2. Play beautiful soaring melody over G drone.
+3. Then cue next (water sounds) while econtinuing melody."
+		},
+		{
+			~waterDry = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.5, \out, 0]);
+			"Continue melody. After a few seconds cue next (more water sounds)."
+
+		},
+		{
+			~waterDrum = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.2, \out, ~beatBoxIn]);
+			"Continue melody. After a few seconds cue next (more water sounds)."
+		},
+		{
+			~waterComb = Synth(\water, [\bufmum, ~buffers.waterPour, \amp, 0.2, \out, ~shortCombIn]);
+			"Continue melody. After a few seconds cue next (octave doubling effect)."
+		},
+		{
+			~input.set(\out, ~shortIn);
+			"Continue melody. Cue next to release water sounds."
+		},
+		{
+			~waterDry.release;
+			~waterDrum.release;
+			~waterComb.release;
+			~input.set(\out, ~longCombIn);
+			"Continue melody. When you have landed on final, cue next while holding note."
+		},
+		{
+			~input.set(\out, ~emptyIn);
+			"Continue holding this note longer than when the drone fades out. Then cue final narration."
+		},
+		{
+			~buffers.narration3.play;
+			"Wait for the narration to finish.
+Play simple melodic fragments around final note.
+Repeat final note, gradually slower and softer.
+END."
+		}
+
+	];
+	};
 ~createGui = {
-
-
+	var indexString = StaticText().font_(Font("Sans Serif", 20)).string_("Beginning of piece (silence).");
+	~currentIndex = -1;
+	w = Window.new("Dizi Effects", Rect(500,500, 500, 500)).layout_(
+		VLayout(
+			StaticText().font_(Font("Sans Serif", 20)).string_("Press [SpaceBar] to go to next cue"),
+			StaticText().font_(Font("Sans Serif", 20)).string_("Current patch: "),
+			indexString
+		)
+	);
+	w.view.keyDownAction = { | doc, char, mod, unicode  |
+		unicode.postln;
+		if(unicode == 32, {
+			~currentIndex = ~currentIndex + 1;
+			indexString.string = ~seq[~currentIndex].();
+		});
+		if(unicode == 27, {
+			w.close;
+			~currentIndex = -1
+			indexString = "Beginning of piece (silence).";
+			~input.set(\out, 0);
+		})
+	};
+	w.front;
 }
+)
+(
+~createBuses.();
+~createSynthDefs.();
+~createEffects.();
+~createSeq.();
+~createGui.();
+)
