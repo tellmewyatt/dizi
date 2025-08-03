@@ -1,7 +1,8 @@
 /*
-FACING THE CURRENT
+Facing the Current
 by Wyatt Cannon
 August 2025
+for SuperCollider V 3.13.0
 
 To run this patch:
 1. Open in SuperCollider IDE.
@@ -25,11 +26,11 @@ s.options.memSize_(8192 * 20);
 	~longCombIn = ~longCombIn ? Bus.audio;
 	~emptyIn = ~emptyIn ? Bus.audio;
 	~buffers = ~buffers ? ();
-	~buffers.waterPour = ~buffers.waterPour ? Buffer.read(s, "./water-pour.wav".resolveRelative);
-	~buffers.narration1 = ~buffers.narration1 ? Buffer.read(s, "./facing-the-current.wav".resolveRelative);
-	~buffers.narration2 = ~buffers.narration2 ? Buffer.read(s, "./one-star.wav".resolveRelative);
-	~buffers.narration3 = ~buffers.narration3 ? Buffer.read(s, "./looking.wav".resolveRelative);
-	~buffers.vocoderBuffers = ~buffers.vocoderBuffers ? PathName("./vocoder-samples".resolveRelative)
+	~buffers.waterPour = ~buffers.waterPour ? Buffer.read(s, "audio/water-pour.wav".resolveRelative);
+	~buffers.narration1 = ~buffers.narration1 ? Buffer.read(s, "audio/narrations/facing_the_current.flac".resolveRelative);
+	~buffers.narration2 = ~buffers.narration2 ? Buffer.read(s, "audio/narrations/one_star.flac".resolveRelative);
+	~buffers.narration3 = ~buffers.narration3 ? Buffer.read(s, "audio/narrations/looking.flac".resolveRelative);
+	~buffers.vocoderBuffers = ~buffers.vocoderBuffers ? PathName("audio/vocoder-samples".resolveRelative)
 	.entries.collect { | path |
 		Buffer.readChannel(s, path.absolutePath, channels: [0]);
 	};
