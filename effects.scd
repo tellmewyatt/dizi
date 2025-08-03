@@ -1,6 +1,4 @@
 s.options.memSize_(8192 * 20);
-s.reboot;
-(
 ~createBuses = {
 	~longIn = ~longIn ? Bus.audio;
 	~mediumIn = ~mediumIn ? Bus.audio;
@@ -13,6 +11,11 @@ s.reboot;
 	~buffers.waterPour = ~buffers.waterPour ? Buffer.read(s, "./water-pour.wav".resolveRelative);
 	~buffers.narration1 = ~buffers.narration1 ? Buffer.read(s, "./facing-the-current.wav".resolveRelative);
 	~buffers.narration2 = ~buffers.narration2 ? Buffer.read(s, "./one-star.wav".resolveRelative);
+	~buffers.narration3 = ~buffers.narration3 ? Buffer.read(s, "./looking.wav".resolveRelative);
+	~buffers.vocoderBuffers = ~buffers.vocoderBuffers ? PathName("./vocoder-samples".resolveRelative)
+	.entries.collect { | path |
+		Buffer.readChannel(s, path.absolutePath, channels: [0]);
+	};
 	"Created Buses and Loaded Buffers".postln;
 };
 ~createSynthDefs = {
@@ -65,13 +68,30 @@ s.reboot;
 		sig = sig * env;
 		Out.ar(out, sig);
 	}).add;
+	SynthDef(\grainBuf, { | out = 0, freq = 2, grainDur = 2, gate=1 |
+		var env = EnvGen.kr(Env.asr(0.01, 1, 0.01), gate);
+		var trigger = Impulse.kr(freq);
+		var bufnum = TChoose.kr(trigger, ~buffers.vocoderBuffers);
+		var bufrate = BufRateScale.ir(bufnum);
+		var pos = TRand.kr(0, 1, trigger);
+		var sig = Pan2.ar(
+			GrainBuf.ar(
+				1,
+				trigger ,
+				grainDur.min(BufDur.kr(bufnum)),
+				bufnum,
+				bufrate, pos),
+			TRand.kr(-1, 1, trigger) // Pan
+		);
+		Out.ar(out, sig * env);
+	}).add;
 };
 ~createEffects = {
-	~input = Synth(\input, [\out, 0], addAction: \addToHead);
+	~input = Synth(\input, [\out, ~emptyIn], addAction: \addToHead);
 	~longGrainify = Synth(\grainify, [
 		\in, ~longIn,
 		\out, 0,
-		\decayTime, 200,
+		\decayTime, 100,
 		\amp, 0.5,
 		\pan, -0.5], addAction: \addToTail);
 	~mediumGrainify = Synth(\grainify, [
@@ -116,10 +136,15 @@ Gradually add flute notes."
 			"Melody. Switch to next cue before long tones end"
 		},
 		{
+			var freq = 0.1;
 			~input.set(\out, ~beatBoxIn);
-			"Nonpitched, erratic consonants or instrument sounds."
+			~vocoderGrains = Pmono(\grainBuf,
+				\freq, Pseg([0.1, 2, 2, 0.1, 0.1], [40, 5, 20, 10], \exp)
+			).play;
+			"Nonpitched, erratic consonants or instrument sounds. Wait for vocal grains to end before moving on."
 		},
 		{
+			~vocoderGrains.stop;
 			~buffers.narration2.play;
 			~input.set(\out, ~longCombIn);
 			"1. Sigh some through your instrument, onobtrusively while the narration plays.
@@ -137,11 +162,7 @@ Gradually add flute notes."
 		},
 		{
 			~waterComb = Synth(\water, [\bufmum, ~buffers.waterPour, \amp, 0.2, \out, ~shortCombIn]);
-			"Continue melody. After a few seconds cue next (octave doubling effect)."
-		},
-		{
-			~input.set(\out, ~shortIn);
-			"Continue melody. Cue next to release water sounds."
+			"Continue melody. After a few seconds cue next (octave doubling effect + water sounds end)."
 		},
 		{
 			~waterDry.release;
@@ -156,21 +177,18 @@ Gradually add flute notes."
 		},
 		{
 			~buffers.narration3.play;
-			"Wait for the narration to finish.
-Play simple melodic fragments around final note.
-Repeat final note, gradually slower and softer.
-END."
+			"Wait for narration to finish. The piece has ended."
 		}
 
 	];
-	};
+};
 ~createGui = {
-	var indexString = StaticText().font_(Font("Sans Serif", 20)).string_("Beginning of piece (silence).");
+	var indexString = StaticText().font_(Font("Sans Serif", 60)).string_("Beginning of piece (silence).");
 	~currentIndex = -1;
 	w = Window.new("Dizi Effects", Rect(500,500, 500, 500)).layout_(
 		VLayout(
-			StaticText().font_(Font("Sans Serif", 20)).string_("Press [SpaceBar] to go to next cue"),
-			StaticText().font_(Font("Sans Serif", 20)).string_("Current patch: "),
+			StaticText().font_(Font("Sans Serif", 60)).string_("Press [SpaceBar] to go to next cue"),
+			StaticText().font_(Font("Sans Serif", 60)).string_("Current patch: "),
 			indexString
 		)
 	);
@@ -182,18 +200,20 @@ END."
 		});
 		if(unicode == 27, {
 			w.close;
-			~currentIndex = -1
+			~currentIndex = -1;
 			indexString = "Beginning of piece (silence).";
 			~input.set(\out, 0);
 		})
 	};
 	w.front;
+};
+s.waitForBoot {
+	~createGui.();
+	r {
+		~createBuses.();
+		~createSynthDefs.();
+		s.sync;
+		~createEffects.();
+		~createSeq.();
+	}.play;
 }
-)
-(
-~createBuses.();
-~createSynthDefs.();
-~createEffects.();
-~createSeq.();
-~createGui.();
-)
