@@ -9,11 +9,17 @@ s.waitForBoot {
 		};
 		SynthDef(\vocoder, { | out = 0, bufnum |
 			var sig = PlayBuf.ar(1, bufnum, BufRateScale.ir(bufnum), doneAction: 2);
+			// Analysis
 			var filters = BPF.ar(sig, 200.collect { | i | (i + 1) * 100 }, 0.1, 1);
 			var amps = filters.collect { | item | Amplitude.ar(item) };
-			var outsig =  amps.collect ({ | amp, i | BPF.ar(Saw.ar(Rand(200, 1000), 1) + WhiteNoise.ar, (i + 1) * 100, 0.1, amp)}).sum * 10;
+			// Resynthesis
+			var outsig =  amps.collect ({ | amp, i |
+				BPF.ar(
+					Saw.ar(Rand(200, 1000), 1) + WhiteNoise.ar,
+					(i + 1) * 100, 0.1, amp)}).sum * 10;
 			Out.ar(out, outsig);
 		}).add;
+		s.sync;
 		Routine {
 			~vocoderSamples.do { | sample |
 				var duration = sample.numFrames / sample.sampleRate;

@@ -1,4 +1,21 @@
+/*
+FACING THE CURRENT
+by Wyatt Cannon
+August 2025
+
+To run this patch:
+1. Open in SuperCollider IDE.
+2. Select All (Ctrl + A)
+3. Execute (Ctrl + Enter)
+4. Press Space Bar / Use a foot pedal to follow the cues.
+
+
+*/
+
+// See bottom for main function
+// Increase memory size so we can use more combs
 s.options.memSize_(8192 * 20);
+// Function Definitions
 ~createBuses = {
 	~longIn = ~longIn ? Bus.audio;
 	~mediumIn = ~mediumIn ? Bus.audio;
@@ -121,6 +138,8 @@ s.options.memSize_(8192 * 20);
 	Synth(\tom, [\in, ~beatBoxIn, \pan, 1, \freq, 500, \amp, 0.5], addAction: \addToTail);
 	"Created Effects".postln;
 };
+// This is the sequence we will use throughout the piece.
+// It does something and returns a description
 ~createSeq = {
 	~seq = [
 		{
@@ -182,6 +201,7 @@ Gradually add flute notes."
 
 	];
 };
+// This is used to create the gui
 ~createGui = {
 	var indexString = StaticText().font_(Font("Sans Serif", 60)).string_("Beginning of piece (silence).");
 	~currentIndex = -1;
@@ -207,6 +227,7 @@ Gradually add flute notes."
 	};
 	w.front;
 };
+// THe main function
 s.waitForBoot {
 	~createGui.();
 	r {
