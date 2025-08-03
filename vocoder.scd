@@ -1,5 +1,5 @@
 // The following code is used to record the vocal samples processed through a vocoder
-s.options.numWireBufs = 1024
+s.options.numWireBufs = 1024;
 s.reboot;
 s.waitForBoot {
 	Routine {
@@ -29,7 +29,7 @@ s.waitForBoot {
 				);
 				Synth(\vocoder, [\bufnum, sample]).waitForFree;
 				s.stopRecording;
-				0.1.wait;
+				0.5.wait;
 			};
 			"Done".postln;
 		}.play;
