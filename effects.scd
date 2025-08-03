@@ -146,14 +146,11 @@ s.options.memSize_(8192 * 20);
 		{
 			~buffers.narration1.play;
 			~input.set(\out, ~longIn);
-			"1. Start on high quiet s. Wait for narration to finish.
-2. ss-> sh -> w.
-3. Long tones on ss, sh, w, h, f.
-Gradually add flute notes."
+			"1. Intro narration and swishing sounds."
 		},
 		{
 			~input.set(\out, ~mediumIn);
-			"Melody. Switch to next cue before long tones end"
+			"2. Uncanny melody"
 		},
 		{
 			var freq = 0.1;
@@ -161,43 +158,41 @@ Gradually add flute notes."
 			~vocoderGrains = Pmono(\grainBuf,
 				\freq, Pseg([0.1, 2, 2, 0.1, 0.1], [40, 5, 20, 10], \exp)
 			).play;
-			"Nonpitched, erratic consonants or instrument sounds. Wait for vocal grains to end before moving on."
+			"3. Unpitched Grains"
 		},
 		{
 			~vocoderGrains.stop;
 			~buffers.narration2.play;
 			~input.set(\out, ~longCombIn);
-			"1. Sigh some through your instrument, onobtrusively while the narration plays.
-2. Play beautiful soaring melody over G drone.
-3. Then cue next (water sounds) while econtinuing melody."
+			"4. Soaring Melody over G Drone"
 		},
 		{
 			~waterDry = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.5, \out, 0]);
-			"Continue melody. After a few seconds cue next (more water sounds)."
+			"5. Add Water"
 
 		},
 		{
 			~waterDrum = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.2, \out, ~beatBoxIn]);
-			"Continue melody. After a few seconds cue next (more water sounds)."
+			"6. Add Water Filtered Through Drums"
 		},
 		{
 			~waterComb = Synth(\water, [\bufmum, ~buffers.waterPour, \amp, 0.2, \out, ~shortCombIn]);
-			"Continue melody. After a few seconds cue next (octave doubling effect + water sounds end)."
+			"7. Add Water Through Comb Filter"
 		},
 		{
 			~waterDry.release;
 			~waterDrum.release;
 			~waterComb.release;
 			~input.set(\out, ~longCombIn);
-			"Continue melody. When you have landed on final, cue next while holding note."
+			"8. Octave Doubling and Water Sounds End"
 		},
 		{
 			~input.set(\out, ~emptyIn);
-			"Continue holding this note longer than when the drone fades out. Then cue final narration."
+			"9. Everything Ends"
 		},
 		{
 			~buffers.narration3.play;
-			"Wait for narration to finish. The piece has ended."
+			"10. Final Narration"
 		}
 
 	];
