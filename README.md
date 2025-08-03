@@ -1,4 +1,4 @@
-# Against the Current
+# Facing the Current
 
 This is the git repository for my music piece "Against the Current". It is for a solo wind instrument and stereo electronics.
 It was created using SuperCollider 3.13. 
