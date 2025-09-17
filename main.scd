@@ -9,9 +9,10 @@ To run this patch:
 2. Select All (Ctrl + A)
 3. Execute (Ctrl + Enter)
 4. Press Space Bar / Use a foot pedal to follow the cues.
-
+5. (Optionally, set what button moves onto the next cue using the ~cueUnicode variable below.
 
 */
+~cueUnicode = 0;
 
 // See bottom for main function
 // Increase memory size so we can use more combs
@@ -140,17 +141,17 @@ s.options.memSize_(8192 * 20);
 	"Created Effects".postln;
 };
 // This is the sequence we will use throughout the piece.
-// It does something and returns a description
+// It does something and returns a [description, cleanupFunciton]. Cleanup function is only used when switching cues during rehearsal.
 ~createSeq = {
 	~seq = [
 		{
 			~buffers.narration1.play;
 			~input.set(\out, ~longIn);
-			"1. Intro narration and swishing sounds."
+			["1. Intro narration and swishing sounds.", {}];
 		},
 		{
 			~input.set(\out, ~mediumIn);
-			"2. Uncanny melody"
+			["2. Uncanny melody", { ~input.set(\out, ~emptyIn) }];
 		},
 		{
 			var freq = 0.1;
@@ -158,45 +159,49 @@ s.options.memSize_(8192 * 20);
 			~vocoderGrains = Pmono(\grainBuf,
 				\freq, Pseg([0.1, 2, 2, 0.1, 0.1], [40, 5, 20, 10], \exp)
 			).play;
-			"3. Unpitched Grains"
+			["3. Unpitched Grains", { ~input.set(\out, ~emptyIn); ~vocoderGrains.stop; }];
 		},
 		{
 			~vocoderGrains.stop;
 			~buffers.narration2.play;
 			~input.set(\out, ~longCombIn);
-			"4. Soaring Melody over G Drone"
+			["4. Soaring Melody over G Drone", { ~input.set(\out, ~emptyIn) }];
 		},
 		{
+			~input.set(\out, ~longCombIn);
 			~waterDry = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.5, \out, 0]);
-			"5. Add Water"
+			["5. Add Water", { ~input.set(\out, ~emptyIn); ~waterDry.release; }];
 
 		},
 		{
+			~input.set(\out, ~longCombIn);
 			~waterDrum = Synth(\water, [\bufnum, ~buffers.waterPour, \amp, 0.2, \out, ~beatBoxIn]);
-			"6. Add Water Filtered Through Drums"
+			["6. Add Water Filtered Through Drums", { ~input.set(\out, ~emptyIn); ~waterDrum.release; }];
 		},
 		{
 			~waterComb = Synth(\water, [\bufmum, ~buffers.waterPour, \amp, 0.2, \out, ~shortCombIn]);
-			"7. Add Water Through Comb Filter"
+			["7. Add Water Through Comb Filter", { ~input.set(\out, ~emptyIn); ~waterComb.release; }];
 		},
 		{
 			~waterDry.release;
 			~waterDrum.release;
 			~waterComb.release;
 			~input.set(\out, ~longCombIn);
-			"8. Octave Doubling and Water Sounds End"
+			["8. Octave Doubling and Water Sounds End", { ~input.set(\out, ~emptyIn) }];
 		},
 		{
 			~input.set(\out, ~emptyIn);
-			"9. Everything Ends"
+			["9. Everything Ends", { ~input.set(\out, ~emptyIn) }];
 		},
 		{
 			~buffers.narration3.play;
-			"10. Final Narration"
+			["10. Final Narration", { ~input.set(\out, ~emptyIn) }];
 		}
 
 	];
 };
+~canPlay = true;
+~cleanUp = {};
 // This is used to create the gui
 ~createGui = {
 	var indexString = StaticText().font_(Font("Sans Serif", 60)).string_("Beginning of piece (silence).");
@@ -210,16 +215,40 @@ s.options.memSize_(8192 * 20);
 	);
 	w.view.keyDownAction = { | doc, char, mod, unicode  |
 		unicode.postln;
-		if(unicode == 32, {
-			~currentIndex = ~currentIndex + 1;
-			indexString.string = ~seq[~currentIndex].();
+		// Play on enter
+		if(~canPlay == true, {
+			if((unicode == 32) || (unicode == ~cueUnicode), {
+				var result;
+				~currentIndex = ~currentIndex + 1;
+				result = ~seq[~currentIndex].();
+				indexString.string = result[0];
+				~cleanUp = result[1];
+
+				// Click blocker
+				~canPlay = false;
+				SystemClock.sched(3, { ~canPlay = true });
+			});
+		});
+		// Play a specific cue
+		if((unicode >= 48) && (unicode <= 57), {
+			var index = unicode - 48 - 1;
+			var result;
+			if(index == -1, { index = 9 });
+			~currentIndex = index;
+			~input.set(\out, ~emptyIn);
+			~cleanUp.();
+			result = ~seq[~currentIndex].();
+			indexString.string = result[0];
+			~cleanUp = result[1];
 		});
 		if(unicode == 27, {
 			w.close;
 			~currentIndex = -1;
 			indexString = "Beginning of piece (silence).";
 			~input.set(\out, 0);
-		})
+		});
+
+
 	};
 	w.front;
 };
